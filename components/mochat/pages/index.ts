@@ -1,0 +1,5 @@
+export { MessagesPage } from './messages-page'
+export { FriendsPage } from './friends-page'
+export { GroupsPage } from './groups-page'
+export { HistoryPage } from './history-page'
+export { SettingsPage } from './settings-page'
