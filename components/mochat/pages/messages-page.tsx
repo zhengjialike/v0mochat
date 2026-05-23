@@ -1,33 +1,15 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import {
-  MessageCircle,
-  Search,
-  Users,
-  User,
-  Send,
-  Smile,
-  Paperclip,
-  Phone,
-  Video,
-  MoreVertical,
-  Check,
-  CheckCheck,
-  Clock,
-  AlertCircle,
-  ChevronLeft,
-  ChevronRight,
-  Image as ImageIcon,
-  File,
-} from 'lucide-react'
+import { MessageCircle, Search, Users, User, Send, Smile, Paperclip, Phone, Video, MoveVertical as MoreVertical, Check, CheckCheck, Clock, CircleAlert as AlertCircle, ChevronLeft, ChevronRight, Image as ImageIcon, File, Activity, RefreshCw } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Separator } from '@/components/ui/separator'
+import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 
 // Types
@@ -64,21 +46,21 @@ interface GroupMember {
 }
 
 // Mock Data
-const mockFriends: Conversation[] = [
-  { id: '1', type: 'private', name: '李华', lastMessage: '你好，项目进展怎么样？', lastMessageTime: '12:30', unread: 2, online: true },
-  { id: '2', type: 'private', name: '小红', lastMessage: '收到，我马上处理', lastMessageTime: '11:45', unread: 0, online: true },
-  { id: '3', type: 'private', name: '张总', lastMessage: '明天上午10点开会', lastMessageTime: '昨天', unread: 0, online: false },
-  { id: '4', type: 'private', name: '王明', lastMessage: '好的，我知道了', lastMessageTime: '周一', unread: 0, online: false },
-  { id: '5', type: 'private', name: '刘芳', lastMessage: '文档已经发给你了', lastMessageTime: '周一', unread: 1, online: true },
+const mockFriends: (Conversation & { latestSeq?: number; peerReadSeq?: number })[] = [
+  { id: '1', type: 'private', name: '李华', lastMessage: '你好，项目进展怎么样？', lastMessageTime: '12:30', unread: 2, online: true, latestSeq: 156, peerReadSeq: 152 },
+  { id: '2', type: 'private', name: '小红', lastMessage: '收到，我马上处理', lastMessageTime: '11:45', unread: 0, online: true, latestSeq: 89, peerReadSeq: 87 },
+  { id: '3', type: 'private', name: '张总', lastMessage: '明天上午10点开会', lastMessageTime: '昨天', unread: 0, online: false, latestSeq: 45, peerReadSeq: 45 },
+  { id: '4', type: 'private', name: '王明', lastMessage: '好的，我知道了', lastMessageTime: '周一', unread: 0, online: false, latestSeq: 78, peerReadSeq: 75 },
+  { id: '5', type: 'private', name: '刘芳', lastMessage: '文档已经发给你了', lastMessageTime: '周一', unread: 1, online: true, latestSeq: 203, peerReadSeq: 198 },
 ]
 
 const mockGroups: Conversation[] = [
-  { 
-    id: 'g1', 
-    type: 'group', 
-    name: '产品讨论组', 
-    lastMessage: '王伟: 下午开会讨论一下', 
-    lastMessageTime: '11:45', 
+  {
+    id: 'g1',
+    type: 'group',
+    name: '产品讨论组',
+    lastMessage: '王伟: 下午开会讨论一下',
+    lastMessageTime: '11:45',
     unread: 3,
     members: [
       { id: 'm1', name: '你', role: 'owner', online: true },
@@ -89,33 +71,36 @@ const mockGroups: Conversation[] = [
       { id: 'm6', name: '周磊', role: 'member', online: true },
       { id: 'm7', name: '吴敏', role: 'member', online: false },
       { id: 'm8', name: '郑涛', role: 'member', online: true },
-    ]
+    ],
+    latestSeq: 234,
   },
-  { 
-    id: 'g2', 
-    type: 'group', 
-    name: '技术团队', 
-    lastMessage: '代码已经提交了', 
-    lastMessageTime: '昨天', 
+  {
+    id: 'g2',
+    type: 'group',
+    name: '技术团队',
+    lastMessage: '代码已经提交了',
+    lastMessageTime: '昨天',
     unread: 1,
     members: [
       { id: 'm1', name: '你', role: 'admin', online: true },
       { id: 'm9', name: '孙浩', role: 'owner', online: true },
       { id: 'm10', name: '钱伟', role: 'member', online: false },
-    ]
+    ],
+    latestSeq: 178,
   },
-  { 
-    id: 'g3', 
-    type: 'group', 
-    name: '设计团队', 
-    lastMessage: '新版UI已经完成', 
-    lastMessageTime: '周二', 
+  {
+    id: 'g3',
+    type: 'group',
+    name: '设计团队',
+    lastMessage: '新版UI已经完成',
+    lastMessageTime: '周二',
     unread: 0,
     members: [
       { id: 'm1', name: '你', role: 'member', online: true },
       { id: 'm11', name: '林悦', role: 'owner', online: false },
       { id: 'm12', name: '高峰', role: 'member', online: true },
-    ]
+    ],
+    latestSeq: 92,
   },
 ]
 
@@ -139,6 +124,14 @@ const mockMessages: Record<string, Message[]> = {
 // Emoji data
 const emojis = ['😀', '😃', '😄', '😁', '😅', '😂', '🤣', '😊', '😇', '🙂', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '🤥', '😌', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '👍', '👎', '👏', '🙏', '🤝', '❤️', '🔥', '✨', '🎉', '💯', '✅', '❌']
 
+// Session Status State type
+interface SessionStatus {
+  conversationId: string
+  latestSeq: number
+  peerReadSeq: number
+  lastUpdate: Date
+}
+
 export function MessagesPage() {
   const [activeTab, setActiveTab] = useState<'friends' | 'groups'>('friends')
   const [searchQuery, setSearchQuery] = useState('')
@@ -148,6 +141,10 @@ export function MessagesPage() {
   const [memberPage, setMemberPage] = useState(0)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // Session status state
+  const [sessionStatus, setSessionStatus] = useState<SessionStatus | null>(null)
+  const [rightPanelTab, setRightPanelTab] = useState<'details' | 'session'>('details')
 
   const membersPerPage = 5
 
@@ -161,7 +158,42 @@ export function MessagesPage() {
     if (selectedConversation) {
       setMessages(mockMessages[selectedConversation.id] || [])
       setMemberPage(0)
+
+      // Initialize session status for private chats
+      if (selectedConversation.type === 'private') {
+        const friendData = mockFriends.find(f => f.id === selectedConversation.id)
+        setSessionStatus({
+          conversationId: selectedConversation.id,
+          latestSeq: friendData?.latestSeq || 0,
+          peerReadSeq: friendData?.peerReadSeq || 0,
+          lastUpdate: new Date()
+        })
+      } else {
+        setSessionStatus(null)
+      }
     }
+  }, [selectedConversation])
+
+  // Session status update interval (every 10 seconds)
+  useEffect(() => {
+    if (!selectedConversation || selectedConversation.type !== 'private') return
+
+    const interval = setInterval(() => {
+      setSessionStatus(prev => {
+        if (!prev) return prev
+        // Simulate incremental updates
+        const latestSeqInc = Math.random() > 0.7 ? prev.latestSeq + 1 : prev.latestSeq
+        const peerReadSeqInc = Math.random() > 0.8 ? Math.min(prev.peerReadSeq + 1, latestSeqInc) : prev.peerReadSeq
+        return {
+          ...prev,
+          latestSeq: latestSeqInc,
+          peerReadSeq: peerReadSeqInc,
+          lastUpdate: new Date()
+        }
+      })
+    }, 10000)
+
+    return () => clearInterval(interval)
   }, [selectedConversation])
 
   // Scroll to bottom when messages change
@@ -541,6 +573,19 @@ export function MessagesPage() {
       {/* Right Column - Session Details */}
       {selectedConversation && (
         <div className="w-[260px] border-l border-border bg-card flex flex-col">
+          {/* Right Panel Tabs (only for private chats) */}
+          {selectedConversation.type === 'private' && (
+            <Tabs value={rightPanelTab} onValueChange={(v) => setRightPanelTab(v as 'details' | 'session')} className="px-4 pt-4">
+              <TabsList className="w-full grid grid-cols-2">
+                <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="session" className="gap-1">
+                  <Activity className="size-3" />
+                  Session
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          )}
+
           {/* Profile Section */}
           <div className="p-4 border-b border-border">
             <div className="flex flex-col items-center text-center">
@@ -566,45 +611,144 @@ export function MessagesPage() {
                     selectedConversation.online ? 'bg-green-500' : 'bg-gray-400'
                   )} />
                   <span className="text-xs text-muted-foreground">
-                    {selectedConversation.online ? '在线' : '离线'}
+                    {selectedConversation.online ? 'Online' : 'Offline'}
                   </span>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Details Section */}
-          <div className="p-4 border-b border-border">
-            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-              会话信息
-            </h4>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">会话 ID</span>
-                <span className="font-mono text-xs">{selectedConversation.id}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">类型</span>
-                <span>{selectedConversation.type === 'private' ? '私聊' : '群聊'}</span>
-              </div>
-              {selectedConversation.type === 'private' && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">消息状态</span>
-                  <span className="text-green-600">已送达</span>
+          {/* Session Status Tab Content */}
+          {selectedConversation.type === 'private' && rightPanelTab === 'session' && sessionStatus && (
+            <div className="flex-1 p-4 overflow-y-auto">
+              <div className="space-y-4">
+                <div className="rounded-lg bg-muted/50 p-4 border border-border">
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
+                    <RefreshCw className="size-3" />
+                    Live Status
+                  </h4>
+
+                  <div className="space-y-3 text-sm">
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Conversation ID</span>
+                      <Badge variant="outline" className="font-mono">
+                        {sessionStatus.conversationId}
+                      </Badge>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Latest Seq</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-semibold text-primary">
+                          {sessionStatus.latestSeq}
+                        </span>
+                        <Badge variant="secondary" className="text-xs">
+                          Messages
+                        </Badge>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Peer Read Seq</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-semibold text-green-600">
+                          {sessionStatus.peerReadSeq}
+                        </span>
+                        <Badge variant="secondary" className="text-xs">
+                          Read
+                        </Badge>
+                      </div>
+                    </div>
+
+                    <Separator className="my-2" />
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Unread by Peer</span>
+                      <Badge variant={sessionStatus.latestSeq - sessionStatus.peerReadSeq > 0 ? 'destructive' : 'secondary'}>
+                        {sessionStatus.latestSeq - sessionStatus.peerReadSeq}
+                      </Badge>
+                    </div>
+                  </div>
                 </div>
-              )}
+
+                <div className="rounded-lg bg-muted/30 p-4">
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                    Synchronization
+                  </h4>
+                  <div className="space-y-2 text-xs text-muted-foreground">
+                    <div className="flex justify-between">
+                      <span>Last Update</span>
+                      <span className="font-mono">
+                        {sessionStatus.lastUpdate.toLocaleTimeString()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Update Interval</span>
+                      <span className="font-mono">10s</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Progress Bar for Read Status */}
+                <div className="rounded-lg bg-muted/30 p-4">
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                    Read Progress
+                  </h4>
+                  <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                    <div
+                      className="bg-green-500 h-full transition-all duration-300"
+                      style={{
+                        width: sessionStatus.latestSeq > 0
+                          ? `${(sessionStatus.peerReadSeq / sessionStatus.latestSeq) * 100}%`
+                          : '100%'
+                      }}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2 text-center">
+                    {sessionStatus.latestSeq > 0
+                      ? `${Math.round((sessionStatus.peerReadSeq / sessionStatus.latestSeq) * 100)}% messages read by peer`
+                      : 'No messages yet'}
+                  </p>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Details Tab Content (default for groups) */}
+          {(selectedConversation.type === 'group' || rightPanelTab === 'details') && (
+            <>
+              {/* Details Section */}
+              <div className="p-4 border-b border-border">
+                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                  Conversation Info
+                </h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Conversation ID</span>
+                    <span className="font-mono text-xs">{selectedConversation.id}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Type</span>
+                    <span>{selectedConversation.type === 'private' ? 'Private' : 'Group'}</span>
+                  </div>
+                  {selectedConversation.type === 'private' && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Message Status</span>
+                      <span className="text-green-600">Delivered</span>
+                    </div>
+                  )}
+                </div>
+              </div>
 
           {/* Members Section (for groups) */}
           {selectedConversation.type === 'group' && selectedConversation.members && (
             <div className="flex-1 flex flex-col p-4">
               <div className="flex items-center justify-between mb-3">
                 <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  群成员 ({selectedConversation.members.length})
+                  Members ({selectedConversation.members.length})
                 </h4>
               </div>
-              
+
               <ScrollArea className="flex-1">
                 <div className="space-y-2">
                   {getPaginatedMembers().map((member) => (
@@ -626,7 +770,7 @@ export function MessagesPage() {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{member.name}</p>
                         <p className="text-[10px] text-muted-foreground">
-                          {member.role === 'owner' ? '群主' : member.role === 'admin' ? '管理员' : '成员'}
+                          {member.role === 'owner' ? 'Owner' : member.role === 'admin' ? 'Admin' : 'Member'}
                         </p>
                       </div>
                     </div>
@@ -667,35 +811,37 @@ export function MessagesPage() {
           {selectedConversation.type === 'private' && (
             <div className="flex-1 flex flex-col p-4">
               <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                快捷操作
+                Quick Actions
               </h4>
               <div className="space-y-2">
                 <Button variant="outline" className="w-full justify-start gap-2" size="sm">
                   <Phone className="size-4" />
-                  语音通话
+                  Voice Call
                 </Button>
                 <Button variant="outline" className="w-full justify-start gap-2" size="sm">
                   <Video className="size-4" />
-                  视频通话
+                  Video Call
                 </Button>
                 <Button variant="outline" className="w-full justify-start gap-2" size="sm">
                   <Search className="size-4" />
-                  搜索消息
+                  Search Messages
                 </Button>
               </div>
-              
+
               <Separator className="my-4" />
-              
+
               <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                消息已读状态
+                Message Read Status
               </h4>
               <div className="space-y-2 text-sm">
                 <div className="flex items-center gap-2">
                   <CheckCheck className="size-4 text-primary" />
-                  <span>对方已读最新消息</span>
+                  <span>Peer has read latest message</span>
                 </div>
               </div>
             </div>
+          )}
+            </>
           )}
         </div>
       )}

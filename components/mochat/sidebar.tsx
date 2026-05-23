@@ -9,6 +9,7 @@ import {
   Clock,
   Settings,
   LogOut,
+  Activity,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -28,11 +29,12 @@ interface UserProfile {
 }
 
 const navItems = [
-  { href: '/messages', label: '消息', icon: MessageCircle },
-  { href: '/friends', label: '好友', icon: Users },
-  { href: '/groups', label: '群组', icon: UsersRound },
-  { href: '/history', label: '历史', icon: Clock },
-  { href: '/settings', label: '设置', icon: Settings },
+  { href: '/messages', label: 'Messages', icon: MessageCircle },
+  { href: '/friends', label: 'Friends', icon: Users },
+  { href: '/groups', label: 'Groups', icon: UsersRound },
+  { href: '/history', label: 'History', icon: Clock },
+  { href: '/aiops', label: 'AIOps', icon: Activity },
+  { href: '/settings', label: 'Settings', icon: Settings },
 ]
 
 const statusColors: Record<UserStatus, string> = {
@@ -145,12 +147,12 @@ export function Sidebar({ user }: SidebarProps) {
         <button
           className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-sidebar-muted transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
           onClick={() => {
-            // Logout logic would go here
-            console.log('Logout clicked')
+            // Logout logic would go here - redirect to login page
+            window.location.href = '/login'
           }}
         >
           <LogOut className="size-5 shrink-0" />
-          <span>退出登录</span>
+          <span>Logout</span>
         </button>
         <p className="px-3 py-2 text-[10px] text-sidebar-muted/60">
           MoChat v1.0.0
